@@ -1,283 +1,262 @@
 package graphItens;
 
-import java.util.HashSet;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.Stack;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
-/**
- * Gráfico não direcionado, usando lista de adjacência.
- * 
- * <p>
- * Este código foi adaptado por Pedro Félix, Matheus Coxir e Gabriel Diniz.
- * </p>
- * 
- * <p>
- * A referência de base foi desenvolvida pelos autores originais listados
- * abaixo.
- * <br>
- * Fonte: <a href=
- * "https://algs4.cs.princeton.edu/41graph/Graph.java.html">Graph.java</a>
- * </p>
- * 
- * @author Robert Sedgewick
- * @author Kevin Wayne
- * 
- */
 public class Graph {
-    private static final String NEWLINE = System.getProperty("line.separator");
+    // Constrói lista de adjacência
+    static ArrayList<ArrayList<ArrayList<Integer>>> construirAdj(int[][] arestas, int V) {
+        ArrayList<ArrayList<ArrayList<Integer>>> adj = new ArrayList<>();
 
-    private final int V; // número de vértices
-    private int E; // número de arestas
-    public Bag<Integer>[] adj; // lista de adjacência
-
-    // Cria um grafo com V vértices e 0 arestas
-    public Graph(int V) {
-        if (V < 0)
-            throw new IllegalArgumentException("Number of vertices must be non-negative");
-        this.V = V;
-        this.E = 0;
-        adj = (Bag<Integer>[]) new Bag[V + 1];
-        for (int v = 1; v <= V; v++) {
-            adj[v] = new Bag<Integer>();
+        for (int i = 0; i <= V; i++) {
+            adj.add(new ArrayList<>());
         }
 
+        // Preencher lista de adjacência
+        for (int[] aresta : arestas) {
+            int u = aresta[0];
+            int v = aresta[1];
+            int peso = aresta[2];
+
+            ArrayList<Integer> e1 = new ArrayList<>();
+            e1.add(v);
+            e1.add(peso);
+            adj.get(u).add(e1);
+
+            ArrayList<Integer> e2 = new ArrayList<>();
+            e2.add(u); e2.add(peso);
+            adj.get(v).add(e2); // adiciona a volta (grafo não direcionado)
+        }
+
+        return adj;
     }
 
-    // Cria um grafo a partir de um FileGraph
-    public Graph(FileGraph fg) {
-        try {
+    // Retorna distâncias mínimas a partir da origem
+    static int[] dijkstra(int V, int[][] arestas, int origem) {
 
-            int[] header = fg.ReadLine();
-            if (header == null || header.length < 2) {
-                throw new IllegalArgumentException("Arquivo inválido: primeira linha deve conter V e E");
-            }
+        ArrayList<ArrayList<ArrayList<Integer>>> adj = construirAdj(arestas, V);
 
-            this.V = header[0]; // número de vértices
-            this.E = 0;
+        // Fila de prioridade [distância, vértice]
+        PriorityQueue<ArrayList<Integer>> fila = new PriorityQueue<>(Comparator.comparingInt(a -> a.get(0)));
 
-            if (V < 0)
-                throw new IllegalArgumentException("Número de vértices em um Graph não pode ser negativo");
+        int[] distancia = new int[V + 1];
+        Arrays.fill(distancia, Integer.MAX_VALUE);
 
-            if (E < 0)
-                throw new IllegalArgumentException("Número de arestas em um Graph não pode ser negativo");
+        distancia[origem] = 0;
+        ArrayList<Integer> inicio = new ArrayList<>();
+        inicio.add(0);
+        inicio.add(origem);
+        fila.offer(inicio);
 
-            // inicializa as listas de adjacência com V+1 posições (índices 1 a V)
-            adj = (Bag<Integer>[]) new Bag[V + 1];
-            for (int v = 1; v <= V; v++) {
-                adj[v] = new Bag<Integer>();
-            }
+        while (!fila.isEmpty()) {
+            ArrayList<Integer> atual = fila.poll();
+            int distAtual = atual.get(0);
+            int u = atual.get(1);
 
-            // lê as arestas
-            int[] edge;
-            while ((edge = fg.ReadLine()) != null) {
-                if (edge.length < 2) {
-                    throw new IllegalArgumentException("Arquivo inválido");
+            // Skip de entradas desatualizadas
+            if (distAtual > distancia[u]) continue;
+
+            for (ArrayList<Integer> vizinho : adj.get(u)) {
+                int v = vizinho.get(0);
+                int peso = vizinho.get(1);
+
+                if (distancia[v] > distancia[u] + peso) {
+                    distancia[v] = distancia[u] + peso;
+                    ArrayList<Integer> temp = new ArrayList<>();
+                    temp.add(distancia[v]);
+                    temp.add(v);
+                    fila.offer(temp);
                 }
-                int v = edge[0];
-                int w = edge[1];
-
-                addEdge(v, w);
             }
+        }
 
-            if (header[1] != E) {
-                throw new IllegalArgumentException("Número de arestas lidas diferente do esperado");
-            }
+        return distancia;
+    }
 
-        } catch (NoSuchElementException e) {
-            throw new IllegalArgumentException("invalid input format in Graph constructor", e);
+    public static void gerarCombinacoes(int n, int k, int start,
+        ArrayList<Integer> atual, ArrayList<ArrayList<Integer>> resultado) {
+        if (atual.size() == k) {
+            resultado.add(new ArrayList<>(atual));
+            return;
+        }
+
+        // 1-based
+        for (int i = start; i <= n; i++) {
+            atual.add(i);
+            gerarCombinacoes(n, k, i + 1, atual, resultado);
+            atual.remove(atual.size() - 1);
         }
     }
 
-    // Cria um novo grafo que é uma cópia profunda de G
-    public Graph(Graph G) {
-        this.V = G.V();
-        this.E = G.E();
-        if (V < 0)
-            throw new IllegalArgumentException("Number of vertices must be non-negative");
+    // Leitura do arquivo de grafo
+    public static int[][] carregarGrafo(String filepath, int[] totalVertices, int[] totalCentros) throws IOException {
+        try (BufferedReader br = new BufferedReader(new FileReader(filepath))) {
 
-        adj = (Bag<Integer>[]) new Bag[V + 1];
-        for (int v = 1; v <= V; v++) {
-            adj[v] = new Bag<Integer>();
-        }
+            // obter numero de vértices e numero de arestas do grafo
+            String linha = br.readLine();
+            String[] valores_iniciais = linha.trim().split("\\s+");
+            int V = Integer.parseInt(valores_iniciais[0]);
+            int M = Integer.parseInt(valores_iniciais[1]);
+            int K = Integer.parseInt(valores_iniciais[2]);
 
-        // mantém a ordem das listas de adjacência
-        for (int v = 1; v <= G.V(); v++) {
-            Stack<Integer> reverse = new Stack<Integer>();
-            for (int w : G.adj[v]) {
-                reverse.push(w);
+            // obter pelos vetores para a função retornar apenas a matriz de adjacencia
+            totalVertices[0] = V;
+            totalCentros[0] = K;
+
+            // System.out.println("Valores lidos: " + V + " " + M + " " + K); //debug
+            int[][] edges = new int[M][3]; // origem -> destino + peso
+            int pos = 0;
+
+            // ler e montar a matriz de adjacencia do grafo
+            while ((linha = br.readLine()) != null) {
+                String[] valores = linha.trim().split("\\s+");
+                if (valores.length == 3) {
+                    int origem = Integer.parseInt(valores[0]);
+                    int destino = Integer.parseInt(valores[1]);
+                    int peso = Integer.parseInt(valores[2]);
+                    edges[pos][0] = origem;
+                    edges[pos][1] = destino;
+                    edges[pos][2] = peso;
+                    pos++;
+                }
             }
-            for (int w : reverse) {
-                adj[v].add(w);
-            }
+            return edges;
         }
     }
 
-    // retorna a lista de adjacência
-    public Bag<Integer>[] getAdj() {
-        return this.adj;
-    }
 
-    // converte Bag[] em Set[] para uso no TarjanAdj
-    @SuppressWarnings("unchecked")
-    public Set<Integer>[] getAdjSet() {
-        Set<Integer>[] sets = new HashSet[V + 1];
+    // Calcula matriz de distâncias entre todos os pares de vértices usando Floyd-Warshall
+    public static int[][] calcularMatrizDistancias(int V, int[][] edges) {
+        int INF = Integer.MAX_VALUE / 2; // evitar overflow
+        int[][] dist = new int[V + 1][V + 1];
+
+        // inicializar matriz
         for (int i = 1; i <= V; i++) {
-            sets[i] = new HashSet<>();
-            for (int v : adj[i]) {
-                sets[i].add(v);
+            Arrays.fill(dist[i], INF);
+            dist[i][i] = 0;
+        }
+
+        // carregar arestas
+        for (int[] e : edges) {
+            int u = e[0], v = e[1], w = e[2];
+            dist[u][v] = Math.min(dist[u][v], w);
+            dist[v][u] = Math.min(dist[v][u], w); // grafo não-direcionado
+        }
+
+        // Floyd-Warshall
+        for (int k = 1; k <= V; k++) {
+            for (int i = 1; i <= V; i++) {
+                for (int j = 1; j <= V; j++) {
+                    if (dist[i][k] + dist[k][j] < dist[i][j]) {
+                        dist[i][j] = dist[i][k] + dist[k][j];
+                    }
+                }
             }
         }
-        return sets;
+
+        return dist;
     }
 
-    // retorna o número de vértices
-    public int V() {
-        return V;
-    }
+    public static ArrayList<Integer> kCentrosExato(int V, int k, int[][] dist) {
+        ArrayList<ArrayList<Integer>> combinacoes = new ArrayList<>();
+        gerarCombinacoes(V, k, 1, new ArrayList<>(), combinacoes); // gera todas as combinações
 
-    // retorna o número de arestas
-    public int E() {
-        return E;
-    }
+        ArrayList<Integer> melhor = null;
+        int melhorRaio = Integer.MAX_VALUE;
 
-    private void validateVertex(int v) {
-        if (v < 1 || v > V)
-            throw new IllegalArgumentException("vertex " + v + " is not between 0 and " + (V - 1));
-    }
+        for (ArrayList<Integer> centros : combinacoes) {
+            int raio = 0;
+            boolean desconectado = false;
 
-    // adiciona a aresta v-w ao grafo
-    public void addEdge(int v, int w) {
-        validateVertex(v);
-        validateVertex(w);
-        E++;
+            // calcula o raio dessa combinação
+            for (int v = 1; v <= V; v++) {
+                int minDist = Integer.MAX_VALUE;
+                for (int c : centros) {
+                    minDist = Math.min(minDist, dist[v][c]);
+                }
+                if (minDist == Integer.MAX_VALUE) {
+                    // vértice inalcançável → raio infinito
+                    desconectado = true;
+                    raio = Integer.MAX_VALUE;
+                    break;
+                }
+                raio = Math.max(raio, minDist);
+            }
 
-        // adiciona w à lista de v e v à lista de w
-        adj[v].add(w);
-        adj[w].add(v);
-    }
-
-    // retorna os vértices adjacentes a v
-    public Iterable<Integer> adj(int v) {
-        validateVertex(v);
-        return adj[v];
-    }
-
-    // retorna o grau do vértice v
-    public int degree(int v) {
-        validateVertex(v);
-        return adj[v].size();
-    }
-
-    // Busca em Profundidade Recursiva marcando os vértices encontrados
-    private void dfsUtil(int v, boolean[] visited) {
-        visited[v] = true;
-        // percorre todos os vértices adjacentes a v
-        for (int neighbor : adj[v]) {
-            // se o vértice ainda não foi visitado, chama dfsUtil recursivamente
-            if (!visited[neighbor]) {
-                dfsUtil(neighbor, visited);
+            // atualiza melhor solução
+            if (!desconectado && raio < melhorRaio) {
+                melhorRaio = raio;
+                melhor = new ArrayList<>(centros); // copia para evitar referência
             }
         }
+
+        System.out.println("Raio ótimo (exato): " + melhorRaio);
+        return melhor;
     }
 
-    public boolean isConnected() {
-        if (V <= 1)
-            return true; // grafos com 0 ou 1 vertices sao conexos
+    public static ArrayList<Integer> kCentrosAproximado(int V, int K, int[][] dist) {
+        ArrayList<Integer> centros = new ArrayList<>();
+        centros.add(1); // primeiro centro arbitrário
 
-        boolean[] visited = new boolean[V + 1];
-        int i;
-        // encontra um vértice com grau maior que 0
-        for (i = 1; i <= V; i++) {
-            if (adj[i] != null && adj[i].size() > 0)
-                break;
+        while (centros.size() < K) {
+            int maisDistante = -1;
+            int maxDist = -1;
+            for (int v = 1; v <= V; v++) {
+                int minDist = Integer.MAX_VALUE;
+                for (int c : centros) {
+                    minDist = Math.min(minDist, dist[v][c]);
+                }
+                if (minDist > maxDist) {
+                    maxDist = minDist;
+                    maisDistante = v;
+                }
+            }
+            centros.add(maisDistante);
         }
 
-        // inicia DFS a partir desse vértice com grau maior que 0
-        dfsUtil(i, visited);
-
-        // verifica se todos os vértices com grau maior que 0 foram visitados
-        for (int j = 1; j <= V; j++) {
-            if (!visited[j])
-                return false;
-        }
-        return true;
-    }
-
-    public void removeEdge(int v, int w) {
-        // Remove a aresta entre v e w, se existir
-        validateVertex(v);
-        validateVertex(w);
-
-        boolean found = false;
-        Bag<Integer> newV = new Bag<>();
-
-        // Reconstrói a lista de adjacência de v sem w
-        for (int x : adj[v]) {
-            if (x != w)
-                newV.add(x);
-            else
-                found = true;
-        }
-        adj[v] = newV;
-
-        // Reconstrói a lista de adjacência de w sem v
-        Bag<Integer> newW = new Bag<>();
-        for (int x : adj[w]) {
-            if (x != v)
-                newW.add(x);
-        }
-        adj[w] = newW;
-
-        if (found) {
-            E--;
-        }
-    }
-
-    public boolean isEulerian() {
-        if (!isConnected()) {
-            return false; // não é conexo
-        }
-
-        // conta quantos vértices têm grau ímpar
-        int oddCount = 0;
+        // calcular raio final
+        int raio = 0;
         for (int v = 1; v <= V; v++) {
-            if (degree(v) % 2 != 0) {
-                oddCount++;
+            int minDist = Integer.MAX_VALUE;
+            for (int c : centros) {
+                minDist = Math.min(minDist, dist[v][c]);
             }
+            raio = Math.max(raio, minDist);
         }
+        System.out.println("Raio aproximado: " + raio);
 
-        // Euleriano se todos os graus forem pares
-        return oddCount == 0;
+        return centros;
     }
 
-    public boolean isSemiEulerian() {
-        if (!isConnected()) {
-            return false;
-        }
+    public static void main(String[] args) throws IOException {
+        String arquivo = "pmed1.txt";
+        int[] V_temp = new int[1];
+        int[] K_temp = new int[1];
 
-        int oddCount = 0;
-        for (int v = 1; v <= V; v++) {
-            if (degree(v) % 2 != 0) {
-                oddCount++;
-            }
-        }
+        // carregar o grafo
 
-        // Semi-Euleriano se exatamente 2 vértices têm grau ímpar
-        return oddCount == 2;
+        int[][] edges = carregarGrafo("./K-centros/src/graphs/" + arquivo, V_temp, K_temp);
+
+        int V = V_temp[0];
+        int K = K_temp[0];
+
+        // calcular matriz de distâncias (djisktra para cada vértice)
+        int[][] dist = calcularMatrizDistancias(V, edges);
+
+        System.out.println("distancias calculadas");
+
+        // rodar método exato (força bruta)
+        ArrayList<Integer> centrosExatos = kCentrosExato(V, K, dist);
+        System.out.println("Centros escolhidos (Exato): " + centrosExatos);
+
+        // rodar método aproximado (Gonzalez)
+        ArrayList<Integer> centrosAprox = kCentrosAproximado(V, K, dist);
+        System.out.println("Centros escolhidos (Aproximado): " + centrosAprox);
+
     }
-
-    public String toString() {
-        StringBuilder s = new StringBuilder();
-        s.append(V + " vertices, " + E + " edges " + NEWLINE);
-        for (int v = 1; v <= V; v++) {
-            s.append(v + ": ");
-            for (int w : adj[v]) {
-                s.append(w + " ");
-            }
-            s.append(NEWLINE);
-        }
-        return s.toString();
-    }
-
 }
