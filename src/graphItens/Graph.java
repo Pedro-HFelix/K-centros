@@ -5,108 +5,28 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.PriorityQueue;
 
 public class Graph {
-    private static class Par {
-        int vertice;
-        int peso; // ou 'distancia' no contexto do Dijkstra
 
-        Par(int vertice, int peso) {
-            this.vertice = vertice;
-            this.peso = peso;
-        }
-    }
-
-    static ArrayList<Integer> melhorSolucaoExata = null;
-    static int melhorRaioExato = Integer.MAX_VALUE;
-
-    // Constrói lista de adjacência
-    static ArrayList<ArrayList<Par>> construirAdj(int[][] arestas, int V) {
-        ArrayList<ArrayList<Par>> adj = new ArrayList<>();
-        for (int i = 0; i <= V; i++) {
-            adj.add(new ArrayList<>());
-        }
-
-        for (int[] aresta : arestas) {
-            int u = aresta[0], v = aresta[1], peso = aresta[2];
-            adj.get(u).add(new Par(v, peso));
-            adj.get(v).add(new Par(u, peso));
-        }
-        return adj;
-    }
-
-    // Retorna distâncias mínimas a partir da origem
-    static int[] dijkstra(int V, int[][] arestas, int origem) {
-        ArrayList<ArrayList<Par>> adj = construirAdj(arestas, V); // Agora retorna ArrayList<ArrayList<Par>>
-
-        // Fila de prioridade [distância, vértice]
-        PriorityQueue<Par> fila = new PriorityQueue<>(Comparator.comparingInt(p -> p.peso));
-
-        int[] distancia = new int[V + 1];
-        Arrays.fill(distancia, Integer.MAX_VALUE);
-
-        distancia[origem] = 0;
-        fila.offer(new Par(origem, 0)); // 'peso' aqui é a distância
-
-        while (!fila.isEmpty()) {
-            Par atual = fila.poll();
-            int distAtual = atual.peso;
-            int u = atual.vertice;
-
-            if (distAtual > distancia[u]) continue;
-
-            for (Par vizinho : adj.get(u)) { // 'vizinho' agora é um 'Par'
-                int v = vizinho.vertice;
-                int pesoAresta = vizinho.peso;
-
-                if (distancia[u] != Integer.MAX_VALUE && // Garante que 'u' é alcançável
-                    distancia[v] > distancia[u] + pesoAresta) {
-                // O resto do bloco continua igual
-                    distancia[v] = distancia[u] + pesoAresta;
-                    fila.offer(new Par(v, distancia[v]));
-                }
-            }
-        }
-        return distancia;
-    }
-
-    public static void gerarCombinacoes(int n, int k, int start,
-        ArrayList<Integer> atual, ArrayList<ArrayList<Integer>> resultado) {
-        if (atual.size() == k) {
-            resultado.add(new ArrayList<>(atual));
-            return;
-        }
-
-        // 1-based
-        for (int i = start; i <= n; i++) {
-            atual.add(i);
-            gerarCombinacoes(n, k, i + 1, atual, resultado);
-            atual.remove(atual.size() - 1);
-        }
-    }
+    private static final int INF = 1000000000;
 
     // Leitura do arquivo de grafo
     public static int[][] carregarGrafo(String filepath, int[] totalVertices, int[] totalCentros) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(filepath))) {
-
-            // obter numero de vértices e numero de arestas do grafo
             String linha = br.readLine();
             String[] valores_iniciais = linha.trim().split("\\s+");
             int V = Integer.parseInt(valores_iniciais[0]);
             int M = Integer.parseInt(valores_iniciais[1]);
             int K = Integer.parseInt(valores_iniciais[2]);
 
-            // obter pelos vetores para a função retornar apenas a matriz de adjacencia
             totalVertices[0] = V;
             totalCentros[0] = K;
 
-            // System.out.println("Valores lidos: " + V + " " + M + " " + K); //debug
-            int[][] edges = new int[M][3]; // origem -> destino + peso
+            int[][] edges = new int[M][3];
             int pos = 0;
 
-            // ler e montar a matriz de adjacencia do grafo
+            System.out.println("V = " + V + " M = " + M + " K = " + K );
+
             while ((linha = br.readLine()) != null) {
                 String[] valores = linha.trim().split("\\s+");
                 if (valores.length == 3) {
@@ -116,6 +36,7 @@ public class Graph {
                     edges[pos][0] = origem;
                     edges[pos][1] = destino;
                     edges[pos][2] = peso;
+                    System.out.println("leu " + origem + "  " + destino + " " + peso);
                     pos++;
                 }
             }
@@ -123,107 +44,126 @@ public class Graph {
         }
     }
 
+    // Construir matriz de adjacência
+    public static int[][] construirMatrizAdj(int V, int[][] edges) {
+        int[][] dist = new int[V + 1][V + 1]; // 1-based
 
-    // Calcula matriz de distâncias entre todos os pares de vértices usando Floyd-Warshall
-    public static int[][] calcularMatrizDistancias(int V, int[][] edges) {
-        
-        // 1. Cria a matriz de distâncias final
-        int[][] dist = new int[V + 1][V + 1];
-
-        // 2. Roda o Dijkstra para cada vértice como origem
         for (int i = 1; i <= V; i++) {
-            
-            // Roda o Dijkstra a partir da origem 'i'
-            // (Usando o método 'dijkstra' que acabamos de corrigir)
-            int[] distanciasDe_i = dijkstra(V, edges, i);
-            
-            // Copia o resultado (distanciasDe_i) para a linha 'i' da matriz
-            // System.arraycopy(distanciasDe_i, 1, dist[i], 1, V); 
-            // Ou de forma mais simples:
-            for (int j = 1; j <= V; j++) {
-                dist[i][j] = distanciasDe_i[j];
-            }
+            Arrays.fill(dist[i], INF);
+            dist[i][i] = 0;
         }
 
-        return dist; // Retorna a matriz preenchida
+        for (int[] e : edges) {
+            int u = e[0];
+            int v = e[1];
+            int w = e[2];
+            dist[u][v] = w;
+            dist[v][u] = w; // se for não-direcionado
+        }
+
+        return dist;
     }
 
-    public static void kCentrosExatoRecursivo(int V, int k, int[][] dist, int start, ArrayList<Integer> centrosAtuais) {
-        
-        // --- CASO BASE: Uma combinação completa foi formada ---
-        if (centrosAtuais.size() == k) {
-            
-            // 1. Processar esta combinação IMEDIATAMENTE
-            int raioAtual = 0;
-            boolean desconectado = false;
-
-            for (int v = 1; v <= V; v++) {
-                int minDist = Integer.MAX_VALUE;
-                for (int c : centrosAtuais) {
-                    minDist = Math.min(minDist, dist[v][c]);
+    // Floyd-Warshall
+    public static void floydWarshall(int V, int[][] dist) {
+        for (int k = 1; k <= V; k++) {
+            for (int i = 1; i <= V; i++) {
+                for (int j = 1; j <= V; j++) {
+                    if (dist[i][k] + dist[k][j] < dist[i][j]) {
+                        dist[i][j] = dist[i][k] + dist[k][j];
+                    }
                 }
-
-                // (Usando a correção de bug da sua pergunta anterior)
-                if (minDist >= Integer.MAX_VALUE / 2) { 
-                    desconectado = true;
-                    raioAtual = Integer.MAX_VALUE;
-                    break;
-                }
-                raioAtual = Math.max(raioAtual, minDist);
             }
-
-            // 2. Atualiza a melhor solução global (estática)
-            if (!desconectado && raioAtual < melhorRaioExato) {
-                melhorRaioExato = raioAtual;
-                melhorSolucaoExata = new ArrayList<>(centrosAtuais); // Salva uma cópia
-            }
-            return; // Fim deste ramo da recursão
-        }
-
-        // --- CASO RECURSIVO: Continuar gerando a combinação ---
-        // (Note que 'i' começa de 'start', não de 1, para evitar duplicatas)
-        for (int i = start; i <= V; i++) {
-            centrosAtuais.add(i); // Escolhe o vértice 'i'
-            
-            // Chama recursivamente para o próximo nível
-            kCentrosExatoRecursivo(V, k, dist, i + 1, centrosAtuais);
-            
-            // Backtrack: remove o vértice 'i' para testar o próximo (i+1) no loop
-            centrosAtuais.remove(centrosAtuais.size() - 1); 
         }
     }
 
-    public static ArrayList<Integer> kCentrosAproximado(int V, int K, int[][] dist) {
+    // Gerar combinações de centros
+    public static void gerarCombinacoes(int n, int k, int start,
+        ArrayList<Integer> atual, ArrayList<ArrayList<Integer>> resultado) {
+        if (atual.size() == k) {
+            resultado.add(new ArrayList<>(atual));
+            return;
+        }
+        for (int i = start; i <= n; i++) {
+            atual.add(i);
+            gerarCombinacoes(n, k, i + 1, atual, resultado);
+            atual.remove(atual.size() - 1);
+        }
+    }
+
+    // Avaliar uma combinação de centros
+    public static int avaliarCombinacao(int[][] dist, ArrayList<Integer> centros, int V) {
+        int maxDist = 0;
+        for (int v = 1; v <= V; v++) {
+            int minDist = INF;
+            for (int c : centros) {
+                minDist = Math.min(minDist, dist[v][c]);
+            }
+            maxDist = Math.max(maxDist, minDist);
+        }
+        return maxDist;
+    }
+
+
+    // Encontrar os K-Centros
+    public static ArrayList<Integer> encontrarKCentros(int[][] dist, int V, int K) {
+        ArrayList<ArrayList<Integer>> combinacoes = new ArrayList<>();
+        gerarCombinacoes(V, K, 1, new ArrayList<>(), combinacoes);
+
+        int melhorRaio = INF;
+        ArrayList<Integer> melhorCombinacao = null;
+
+        for (ArrayList<Integer> centros : combinacoes) {
+            int raio = avaliarCombinacao(dist, centros, V);
+            if (raio < melhorRaio) {
+                melhorRaio = raio;
+                melhorCombinacao = centros;
+            }
+        }
+
+        System.out.println("Melhor raio encontrado: " + melhorRaio);
+        return melhorCombinacao;
+    }
+
+    // Método aproximado de Gonzales (greedy)
+    public static ArrayList<Integer> gonzalesKCentros(int[][] dist, int V, int K) {
         ArrayList<Integer> centros = new ArrayList<>();
-        centros.add(1); // primeiro centro arbitrário
 
+        // 1. Escolhe arbitrariamente o primeiro centro (por exemplo, vértice 1)
+        centros.add(1);
+
+        // 2. Itera até ter K centros
         while (centros.size() < K) {
-            int maisDistante = -1;
-            int maxDist = -1;
+            int melhorVertice = -1;
+            int maiorDist = -1;
+
+            // Para cada vértice, calcula a distância ao centro mais próximo
             for (int v = 1; v <= V; v++) {
-                int minDist = Integer.MAX_VALUE;
+                int minDist = INF;
                 for (int c : centros) {
                     minDist = Math.min(minDist, dist[v][c]);
                 }
-                if (minDist > maxDist) {
-                    maxDist = minDist;
-                    maisDistante = v;
+                // Escolhe o vértice mais distante dos centros atuais
+                if (minDist > maiorDist) {
+                    maiorDist = minDist;
+                    melhorVertice = v;
                 }
             }
-            centros.add(maisDistante);
+
+            centros.add(melhorVertice);
         }
 
-        // calcular raio final
+        // Calcula o raio obtido
         int raio = 0;
         for (int v = 1; v <= V; v++) {
-            int minDist = Integer.MAX_VALUE;
+            int minDist = INF;
             for (int c : centros) {
                 minDist = Math.min(minDist, dist[v][c]);
             }
             raio = Math.max(raio, minDist);
         }
-        System.out.println("Raio aproximado: " + raio);
 
+        System.out.println("Raio aproximado (Gonzales): " + raio);
         return centros;
     }
 
@@ -232,33 +172,21 @@ public class Graph {
         int[] V_temp = new int[1];
         int[] K_temp = new int[1];
 
-        // carregar o grafo
-
-        int[][] edges = carregarGrafo("./src/graphs/" + arquivo, V_temp, K_temp);
+        int[][] edges = carregarGrafo("./K-centros/src/graphs/" + arquivo, V_temp, K_temp);
 
         int V = V_temp[0];
         int K = K_temp[0];
 
-        // calcular matriz de distâncias (djisktra para cada vértice)
-        int[][] dist = calcularMatrizDistancias(V, edges);
+        System.out.println("V_xt " + V + " K_xt " + K );
 
-        System.out.println("distancias calculadas");
+        int[][] dist = construirMatrizAdj(V, edges);
+        floydWarshall(V, dist);
 
-        // rodar método exato (força bruta)
-        System.out.println("Rodando método exato (sem OOM)...");
-        // Reseta as variáveis estáticas (caso rode várias vezes)
-        melhorSolucaoExata = null;
-        melhorRaioExato = Integer.MAX_VALUE;
-        
-        // Inicia a busca recursiva
-        kCentrosExatoRecursivo(V, K, dist, 1, new ArrayList<>());
-        
-        System.out.println("Raio ótimo (exato): " + melhorRaioExato);
-        System.out.println("Centros escolhidos (Exato): " + melhorSolucaoExata);
+        ArrayList<Integer> centros = encontrarKCentros(dist, V, K);
 
-        // rodar método aproximado (Gonzalez)
-        ArrayList<Integer> centrosAprox = kCentrosAproximado(V, K, dist);
-        System.out.println("Centros escolhidos (Aproximado): " + centrosAprox);
+        System.out.println("Centros escolhidos: " + centros);
 
+        ArrayList<Integer> centrosGreedy = gonzalesKCentros(dist, V, K);
+        System.out.println("Centros escolhidos (Gonzales): " + centrosGreedy);
     }
 }
