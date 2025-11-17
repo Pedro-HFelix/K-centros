@@ -130,6 +130,37 @@ public class Graph {
         return maxDist;
     }
 
+    // Gerar combinações e avaliar diretamente (sem acumular todas)
+    public static void gerarCombinacoesOnTheFly(int n, int k, int start,
+            ArrayList<Integer> atual, int[][] dist, int V,
+            int[] melhorRaio, ArrayList<Integer> melhorCombinacao) {
+
+        if (atual.size() == k) {
+            int raio = avaliarCombinacao(dist, atual, V);
+            if (raio < melhorRaio[0]) {
+                melhorRaio[0] = raio;
+                melhorCombinacao.clear();
+                melhorCombinacao.addAll(atual);
+            }
+            return;
+        }
+
+        for (int i = start; i <= n; i++) {
+            atual.add(i);
+            gerarCombinacoesOnTheFly(n, k, i + 1, atual, dist, V, melhorRaio, melhorCombinacao);
+            atual.remove(atual.size() - 1);
+        }
+    }
+
+    // Encontrar os K-Centros (exato)
+    public static ArrayList<Integer> encontrarKCentros2(int[][] dist, int V, int K) {
+        int[] melhorRaio = {INF};
+        ArrayList<Integer> melhorCombinacao = new ArrayList<>();
+
+        gerarCombinacoesOnTheFly(V, K, 1, new ArrayList<>(), dist, V, melhorRaio, melhorCombinacao);
+
+        return melhorCombinacao;
+    }
 
     // Encontrar os K-Centros (exato)
     public static ArrayList<Integer> encontrarKCentros(int[][] dist, int V, int K) {
@@ -147,7 +178,7 @@ public class Graph {
             }
         }
 
-        System.out.println("Melhor raio encontrado: " + melhorRaio);
+        // System.out.println("Melhor raio encontrado: " + melhorRaio);
         return melhorCombinacao;
     }
 
@@ -192,75 +223,75 @@ public class Graph {
         // System.out.println("Raio aproximado (Gonzales): " + raio); DEBUG
         return centros;
     }
-
-    // ANTIGA MAIN
-
-    // public static void main(String[] args) throws IOException {
-    //     String arquivo = "pmed1.txt";
-    //     int[] V_temp = new int[1];
-    //     int[] K_temp = new int[1];
-
-    //     int[][] edges = carregarGrafo("./K-centros/src/graphs/" + arquivo, V_temp, K_temp);
-
-    //     int V = V_temp[0];
-    //     int K = K_temp[0];
-
-    //     int[][] matriz = construirMatrizAdj(V, edges);
-    //     // floydWarshall(V, dist);
-    //     int[][] dist = allPairsShortestPaths(V, matriz);
-
-    //     long inicio = System.nanoTime();
-    //     ArrayList<Integer> centros = encontrarKCentros(dist, V, K);
-
-    //     long fim = System.nanoTime();
-    //     double somaTempos = (fim - inicio);
-
-    //     double mediaMs = somaTempos / 1_000_000.0;
-
-    //     System.out.print(" - Arquivo: " + arquivo);
-    //     // System.out.println("Centros escolhidos (Gonzales): " + centrosGreedy);
-    //     System.out.printf(" - Tempo médio : %.3f ms%n", mediaMs);
-
-    //     System.out.println("Centros escolhidos: " + centros);
-
-    //     ArrayList<Integer> centrosGreedy = gonzalesKCentros(dist, V, K);
-    //     System.out.println("Centros escolhidos (Gonzales): " + centrosGreedy);
-    // }
+    
+    //ANTIGA MAIN
 
     public static void main(String[] args) throws IOException {
-        int totalGrafos = 40;
+        String arquivo = "pmed6.txt";
+        int[] V_temp = new int[1];
+        int[] K_temp = new int[1];
 
-        System.out.println("-----------------------------------");
-        for (int g = 1; g <= totalGrafos; g++) {
-            String arquivo = "pmed" + g + ".txt";
-            int[] V_temp = new int[1];
-            int[] K_temp = new int[1];
+        int[][] edges = carregarGrafo("./src/graphs/" + arquivo, V_temp, K_temp);
 
-            int[][] edges = carregarGrafo("./K-centros/src/graphs/" + arquivo, V_temp, K_temp);
+        int V = V_temp[0];
+        int K = K_temp[0];
 
-            int V = V_temp[0];
-            int K = K_temp[0];
+        int[][] matriz = construirMatrizAdj(V, edges);
+        // floydWarshall(V, dist);
+        int[][] dist = allPairsShortestPaths(V, matriz);
 
-            int[][] matriz = construirMatrizAdj(V, edges);
-            int[][] dist = allPairsShortestPaths(V, matriz);
+        long inicio = System.nanoTime();
+        ArrayList<Integer> centros = encontrarKCentros2(dist, V, K);
 
-            // Executa método aproximado 10 vezes e calcula média
-            long somaTempos = 0;
-            ArrayList<Integer> centrosGreedy = null;
+        long fim = System.nanoTime();
+        double somaTempos = (fim - inicio);
 
-            for (int rep = 0; rep < 10; rep++) {
-                long inicio = System.nanoTime();
-                centrosGreedy = gonzalesKCentros(dist, V, K);
-                long fim = System.nanoTime();
-                somaTempos += (fim - inicio);
-            }
+        double mediaMs = somaTempos / 1_000_000.0;
 
-            double mediaMs = (somaTempos / 10.0) / 1_000_000.0;
+        System.out.print(" - Arquivo: " + arquivo);
+        // System.out.println("Centros escolhidos (Gonzales): " + centrosGreedy);
+        System.out.printf(" - Tempo médio : %.3f ms%n", mediaMs);
 
-            System.out.print(" - Arquivo: " + arquivo);
-            // System.out.println("Centros escolhidos (Gonzales): " + centrosGreedy);
-            System.out.printf(" - Tempo médio (10 execuções): %.3f ms%n", mediaMs);
-            System.out.println("-----------------------------------");
-        }
+        // System.out.println("Centros escolhidos: " + centros);
+
+        // ArrayList<Integer> centrosGreedy = gonzalesKCentros(dist, V, K);
+        // System.out.println("Centros escolhidos (Gonzales): " + centrosGreedy);
     }
+
+    // public static void main(String[] args) throws IOException {
+    //     int totalGrafos = 40;
+
+    //     System.out.println("-----------------------------------");
+    //     for (int g = 1; g <= totalGrafos; g++) {
+    //         String arquivo = "pmed" + g + ".txt";
+    //         int[] V_temp = new int[1];
+    //         int[] K_temp = new int[1];
+
+    //         int[][] edges = carregarGrafo("./K-centros/src/graphs/" + arquivo, V_temp, K_temp);
+
+    //         int V = V_temp[0];
+    //         int K = K_temp[0];
+
+    //         int[][] matriz = construirMatrizAdj(V, edges);
+    //         int[][] dist = allPairsShortestPaths(V, matriz);
+
+    //         // Executa método aproximado 10 vezes e calcula média
+    //         long somaTempos = 0;
+    //         ArrayList<Integer> centrosGreedy = null;
+
+    //         for (int rep = 0; rep < 10; rep++) {
+    //             long inicio = System.nanoTime();
+    //             centrosGreedy = gonzalesKCentros(dist, V, K);
+    //             long fim = System.nanoTime();
+    //             somaTempos += (fim - inicio);
+    //         }
+
+    //         double mediaMs = (somaTempos / 10.0) / 1_000_000.0;
+
+    //         System.out.print(" - Arquivo: " + arquivo);
+    //         // System.out.println("Centros escolhidos (Gonzales): " + centrosGreedy);
+    //         System.out.printf(" - Tempo médio (10 execuções): %.3f ms%n", mediaMs);
+    //         System.out.println("-----------------------------------");
+    //     }
+    // }
 }
