@@ -6,6 +6,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+/*
+ * Implementações baseadas na implementação do GeeksforGeeks (GFG):
+ * - Dijkstra’s Shortest Path Algorithm:
+ *   https://www.geeksforgeeks.org/dsa/dijkstras-shortest-path-algorithm-greedy-algo-7/
+ * - K-Centros (exato e aproximado - algoritmo de Gonzales):
+ *   https://www.geeksforgeeks.org/dsa/greedy-approximate-algorithm-for-k-centers-problem/
+ *
+ * A versão exata foi adaptada para gerar combinações e avaliar diretamente,
+ * enquanto o método aproximado segue a abordagem gulosa de Gonzales.
+ */
+
 public class Graph {
 
     private static final int INF = 1000000000;
